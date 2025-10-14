@@ -3,6 +3,19 @@ import cramjam
 import sqlite3
 import struct
 
+# def drop_padding(stream, read_length):
+# 	length = 8 - ((read_length - 1) % 8) - 1
+# 	result = stream.read(length)
+# 	if len(result) < length:
+# 		raise EOFError()
+#
+# def read_bytes(stream, length: int) -> bytes:
+# 	result = stream.read(length)
+# 	if len(result) < length:
+# 		raise EOFError()
+# 	drop_padding(stream, length)
+# 	return result
+
 def peek(stream) -> int:
 	try:
 		return struct.unpack_from("<q", stream.peek(8))[0]
@@ -13,96 +26,87 @@ def peek_pair(stream) -> (int, int):
 	v = peek(stream)
 	return ((v >> 32) & 0xFFFFFFFF, (v >> 0) & 0xFFFFFFFF)
 
-def read_fmt(stream, fmt="q"):
+def read_fmt(read_bytes, fmt="q"):
 	try:
-		return struct.unpack("<" + fmt, stream.read(8))[0]
+		return struct.unpack("<" + fmt, read_bytes)[0]
 	except struct.error:
 		raise EOFError() from None
 
-def read_pair(stream) -> (int, int):
-	v = read_fmt(stream)
-	return ((v >> 32) & 0xFFFFFFFF, (v >> 0) & 0xFFFFFFFF)
+def read_pair(stream, skip = False) -> (bytes, int, int):
+	read_bytes = stream.read(8)
+	v = read_fmt(read_bytes)
+	if skip:
+		return read_bytes
+	else:
+		return (read_bytes, (v >> 32) & 0xFFFFFFFF, (v >> 0) & 0xFFFFFFFF)
 
 def read_header(stream) -> None:
-	tag, data = peek_pair(stream)
-
-	scope: int
+	tag, _ = peek_pair(stream)
 	if tag == 0xFFF10000:
-		tag, data = read_pair(stream)
+		tag, _ = read_pair(stream)
 
-		# if data == 0:
-		# 	data = int(Scope.SAME_PROCESS)
 
-		# scope = data
-	# else:  # Old on-disk format
-	# 	scope = int(Scope.DIFFERENT_PROCESS_FOR_INDEX_DB)
-	#
-	# if scope == Scope.DIFFERENT_PROCESS:
-	# 	self.compat = False
-	# elif scope == Scope.DIFFERENT_PROCESS_FOR_INDEX_DB:#
-	# 	self.compat = True
-	# elif scope == Scope.SAME_PROCESS:
-	# 	raise InvalidHeaderError("Can only parse persistent data")
-	# else:
-	# 	raise InvalidHeaderError("Invalid scope")
-
-def read_string(stream, info: int) -> str:
+def read_string(stream, info: int) -> (bytes, str):
 	length = info & 0x7FFFFFFF
 	latin1 = bool(info & 0x80000000)
 
 	if latin1:
-		return read_bytes(stream, length).decode("latin-1")
+		result = stream.read(length)
+		if len(result) < length:
+			raise EOFError()
+		read_length = 8 - ((length - 1) % 8) - 1
+		stream.read(read_length)
+		return result, result.decode("latin-1")
 	else:
-		return read_bytes(stream, length * 2).decode("utf-16le")
-
-def drop_padding(stream, read_length):
-	length = 8 - ((read_length - 1) % 8) - 1
-	result = stream.read(length)
-	if len(result) < length:
-		raise EOFError()
-
-def read_bytes(stream, length: int) -> bytes:
-	result = stream.read(length)
-	if len(result) < length:
-		raise EOFError()
-	drop_padding(stream, length)
-	return result
-
-class JSInt32(int):
-	"""Type to represent the standard 32-bit signed integer"""
-	def __init__(self, value):
-		if not (-0x80000000 <= value <= 0x7FFFFFFF):
-			raise TypeError("JavaScript integers are signed 32-bit values")
+		result = stream.read(length)
+		if len(result) < length:
+			raise EOFError()
+		read_length = 8 - ((length - 1) % 8) - 1
+		stream.read(read_length)
+		return result, result.decode("utf-16le")
 
 def start_read(stream, objs):
-	tag, data = read_pair(stream)
+	cutbytes, tag, data = read_pair(stream)
 
 	if tag == 0xFFFF0003:#
 		if data > 0x7FFFFFFF:
 			data -= 0x80000000
-		return False, JSInt32(data)
+		return False, data, cutbytes
 
 	elif tag == 0xFFFF0004:#
-		return False, read_string(stream, data)
+		cutbytes2, result = read_string(stream, data) 
+		return False, result, cutbytes+cutbytes2
 
 	else:
 		obj = []
 		objs.append(obj)
-		return True, obj
+		return True, obj, cutbytes
+
+def check(c, stream):
+	old_stream = stream
+	if c+stream.read() == b'\x03\x00\x00\x00\x00\x00\xf1\xff\x01\x00\x00\x00\x07\x00\xff\xff\x00\x00\x00\x00\x03\x00\xff\xff\x0c\x00\x00\x80\x04\x00\xff\xffuser-filters\x00\x00\x00\x00\x00\x00\x00\x00\x13\x00\xff\xff':
+		print("true")
+	else:
+		print("false")
 
 def read_main(stream):
+
 	all_objs = []
 	objs = []
 
-	read_header(stream) #8バイト飛ばす
-	add_obj, result = start_read(stream, objs)
+	# read_header(stream) #8バイト飛ばす
+	c1 = read_pair(stream, skip=True) #8バイト飛ばす
+	import pdb; pdb.set_trace()
+
+	add_obj, result, c2 = start_read(stream, objs)
+	check(c1+c2, stream)
 	if add_obj:
 		all_objs.append(result)
 
 	while len(objs) > 0:
 		obj = objs[-1]
 
-		tag, data = peek_pair(stream)
+		tag, _ = peek_pair(stream)
 		if tag == 0xFFFF0013:
 			read_pair(stream)
 			objs.pop()
@@ -124,7 +128,6 @@ def read_main(stream):
 					obj.append(None)
 
 			obj[key] = val
-			import pdb; pdb.set_trace()
 
 	all_objs.clear()
 
