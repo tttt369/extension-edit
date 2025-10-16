@@ -32,7 +32,7 @@ def read_fmt(read_bytes, fmt="q"):
 	except struct.error:
 		raise EOFError() from None
 
-def read_pair(stream, skip = False) -> (bytes, int, int):
+def read_pair(stream, skip = False) -> (int, int):
 	read_bytes = stream.read(8)
 	v = read_fmt(read_bytes)
 	if skip:
@@ -55,15 +55,15 @@ def read_string(stream, info: int) -> (bytes, str):
 		if len(result) < length:
 			raise EOFError()
 		read_length = 8 - ((length - 1) % 8) - 1
-		stream.read(read_length)
-		return result, result.decode("latin-1")
+		cut_bytes = stream.read(read_length)
+		return result+cut_bytes, result.decode("latin-1")
 	else:
 		result = stream.read(length)
 		if len(result) < length:
 			raise EOFError()
 		read_length = 8 - ((length - 1) % 8) - 1
-		stream.read(read_length)
-		return result, result.decode("utf-16le")
+		cut_bytes = stream.read(read_length)
+		return result+cut_bytes, result.decode("utf-16le")
 
 def start_read(stream, objs):
 	cutbytes, tag, data = read_pair(stream)
@@ -82,12 +82,26 @@ def start_read(stream, objs):
 		objs.append(obj)
 		return True, obj, cutbytes
 
-def check(c, stream):
-	old_stream = stream
-	if c+stream.read() == b'\x03\x00\x00\x00\x00\x00\xf1\xff\x01\x00\x00\x00\x07\x00\xff\xff\x00\x00\x00\x00\x03\x00\xff\xff\x0c\x00\x00\x80\x04\x00\xff\xffuser-filters\x00\x00\x00\x00\x00\x00\x00\x00\x13\x00\xff\xff':
-		print("true")
-	else:
-		print("false")
+def check(c1, c2, c3, c4, c5, stream):
+	# if c+stream.read() == b'\x03\x00\x00\x00\x00\x00\xf1\xff\x01\x00\x00\x00\x07\x00\xff\xff\x00\x00\x00\x00\x03\x00\xff\xff\x0c\x00\x00\x80\x04\x00\xff\xffuser-filters\x00\x00\x00\x00\x00\x00\x00\x00\x13\x00\xff\xff':
+	# 	print("true")
+	# else:
+	# 	print("false")
+	readed_stream = stream.read()
+	c1_int = int.from_bytes(c1, "little")
+	c2_int = int.from_bytes(c2, "little")
+	c3_int = int.from_bytes(c3, "little")
+	c4_int = int.from_bytes(c4, "little")
+	c5_int = int.from_bytes(c5, "little")
+	stream_int = int.from_bytes(readed_stream, "little")
+	print("c1", hex(c1_int))
+	print("c2", hex(c2_int))
+	print("c3", hex(c3_int))
+	print("c4", hex(c4_int))
+	print("c5", hex(c5_int))
+	print("stream", hex(stream_int))
+	return io.BufferedReader(io.BytesIO(readed_stream))
+
 
 def read_main(stream):
 
@@ -96,10 +110,8 @@ def read_main(stream):
 
 	# read_header(stream) #8バイト飛ばす
 	c1 = read_pair(stream, skip=True) #8バイト飛ばす
-	import pdb; pdb.set_trace()
 
 	add_obj, result, c2 = start_read(stream, objs)
-	check(c1+c2, stream)
 	if add_obj:
 		all_objs.append(result)
 
@@ -107,16 +119,17 @@ def read_main(stream):
 		obj = objs[-1]
 
 		tag, _ = peek_pair(stream)
+		c3 = b''
 		if tag == 0xFFFF0013:
-			read_pair(stream)
+			c3 = read_pair(stream, skip=True)
 			objs.pop()
 			continue
 
-		add_obj, key = start_read(stream, objs)
+		add_obj, key, c4 = start_read(stream, objs)
 		if add_obj:
 			all_objs.append(key)
 
-		add_obj, val = start_read(stream, objs)
+		add_obj, val, c5 = start_read(stream, objs)
 		if add_obj:
 			all_objs.append(val)
 		else:
@@ -124,11 +137,13 @@ def read_main(stream):
 				if not isinstance(key, int) or key < 0:
 					continue
 
+				import pdb; pdb.set_trace()
 				while key >= len(obj):
 					obj.append(None)
 
 			obj[key] = val
 
+		stream = check(c1, c2, c3, c4, c5, stream)
 	all_objs.clear()
 
 	return result
