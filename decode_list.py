@@ -56,14 +56,14 @@ def read_string(stream, info: int) -> (bytes, str):
 			raise EOFError()
 		read_length = 8 - ((length - 1) % 8) - 1
 		cut_bytes = stream.read(read_length)
-		return result+cut_bytes, result.decode("latin-1")
+		return result, cut_bytes, result.decode("latin-1")
 	else:
 		result = stream.read(length)
 		if len(result) < length:
 			raise EOFError()
 		read_length = 8 - ((length - 1) % 8) - 1
 		cut_bytes = stream.read(read_length)
-		return result+cut_bytes, result.decode("utf-16le")
+		return result, cut_bytes, result.decode("utf-16le")
 
 def start_read(stream, objs):
 	cutbytes, tag, data = read_pair(stream)
@@ -71,34 +71,39 @@ def start_read(stream, objs):
 	if tag == 0xFFFF0003:#
 		if data > 0x7FFFFFFF:
 			data -= 0x80000000
-		return False, data, cutbytes
+		return False, data, cutbytes, None
 
 	elif tag == 0xFFFF0004:#
-		cutbytes2, result = read_string(stream, data) 
-		return False, result, cutbytes+cutbytes2
+		cutbytes2, cutbytes3, result = read_string(stream, data) 
+		return False, result, cutbytes, cutbytes2, cutbytes3
 
 	else:
 		obj = []
 		objs.append(obj)
-		return True, obj, cutbytes
+		return True, obj, cutbytes, None
 
-def check(c1, c2, c3, c4, c5, stream):
+def check(c1, c2, c3, c4, c5, c6, c7, stream):
 	# if c+stream.read() == b'\x03\x00\x00\x00\x00\x00\xf1\xff\x01\x00\x00\x00\x07\x00\xff\xff\x00\x00\x00\x00\x03\x00\xff\xff\x0c\x00\x00\x80\x04\x00\xff\xffuser-filters\x00\x00\x00\x00\x00\x00\x00\x00\x13\x00\xff\xff':
 	# 	print("true")
 	# else:
 	# 	print("false")
 	readed_stream = stream.read()
+	print(c1)
 	c1_int = int.from_bytes(c1, "little")
 	c2_int = int.from_bytes(c2, "little")
 	c3_int = int.from_bytes(c3, "little")
 	c4_int = int.from_bytes(c4, "little")
 	c5_int = int.from_bytes(c5, "little")
+	c6_int = int.from_bytes(c6, "little")
+	c7_int = int.from_bytes(c7, "little")
 	stream_int = int.from_bytes(readed_stream, "little")
 	print("c1", hex(c1_int))
 	print("c2", hex(c2_int))
 	print("c3", hex(c3_int))
 	print("c4", hex(c4_int))
 	print("c5", hex(c5_int))
+	print("c6", hex(c6_int))
+	print("c7", hex(c7_int))
 	print("stream", hex(stream_int))
 	return io.BufferedReader(io.BytesIO(readed_stream))
 
@@ -111,7 +116,7 @@ def read_main(stream):
 	# read_header(stream) #8バイト飛ばす
 	c1 = read_pair(stream, skip=True) #8バイト飛ばす
 
-	add_obj, result, c2 = start_read(stream, objs)
+	add_obj, result, c2, _ = start_read(stream, objs)
 	if add_obj:
 		all_objs.append(result)
 
@@ -125,11 +130,12 @@ def read_main(stream):
 			objs.pop()
 			continue
 
-		add_obj, key, c4 = start_read(stream, objs)
+		add_obj, key, c4, _ = start_read(stream, objs)
 		if add_obj:
 			all_objs.append(key)
 
-		add_obj, val, c5 = start_read(stream, objs)
+		add_obj, val, c5, c6, c7 = start_read(stream, objs)
+		import pdb; pdb.set_trace()
 		if add_obj:
 			all_objs.append(val)
 		else:
@@ -137,13 +143,12 @@ def read_main(stream):
 				if not isinstance(key, int) or key < 0:
 					continue
 
-				import pdb; pdb.set_trace()
 				while key >= len(obj):
 					obj.append(None)
 
 			obj[key] = val
 
-		stream = check(c1, c2, c3, c4, c5, stream)
+		stream = check(c1, c2, c3, c4, c5, c6, c7, stream)
 	all_objs.clear()
 
 	return result
@@ -155,5 +160,6 @@ with sqlite3.connect(sqlite_path) as conn:
 	for row in cur:
 		decompressed = cramjam.snappy.decompress_raw(row[1])
 		stream = (io.BufferedReader(io.BytesIO(decompressed)))
+		print(stream.read())
 		result = read_main(stream)
 		print((result))
