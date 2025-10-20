@@ -1,4 +1,5 @@
 import io
+import pdb
 import cramjam
 import sqlite3
 import struct
@@ -112,7 +113,7 @@ def read_main(stream):
 
 	all_objs = []
 	objs = []
-
+	pdb.set_trace()
 	# read_header(stream) #8バイト飛ばす
 	c1 = read_pair(stream, skip=True) #8バイト飛ばす
 
@@ -135,7 +136,6 @@ def read_main(stream):
 			all_objs.append(key)
 
 		add_obj, val, c5, c6, c7 = start_read(stream, objs)
-		import pdb; pdb.set_trace()
 		if add_obj:
 			all_objs.append(val)
 		else:
@@ -153,7 +153,7 @@ def read_main(stream):
 
 	return result
 
-sqlite_path = "./idb/3647222921wleabcEoxlt-eengsairo.sqlite"
+sqlite_path = "/home/asdf/.mozilla/firefox/dp8rcxsr.default-release/storage/default/moz-extension+++fa203d0f-14e3-46cd-b6b6-1550b9b088e6^userContextId=4294967295/idb/3647222921wleabcEoxlt-eengsairo.sqlite"
 with sqlite3.connect(sqlite_path) as conn:
 	cur = conn.cursor()
 	cur.execute("SELECT key, data, file_ids FROM object_data WHERE ('' || key || '') LIKE '0tfmfdufeGjmufsMjtut';")
