@@ -1,10 +1,13 @@
 import io
 import pdb
+from typing import Tuple
 import cramjam
 import sqlite3
 import struct
 
-def check(b_objs, stream):
+INT32     = 0xFFFF0003
+STRING    = 0xFFFF0004
+def check(b_objs, stream) -> io.BufferedReader:
 	readed_stream = stream.read()
 
 	for key, value in b_objs.items():
@@ -17,20 +20,17 @@ def check(b_objs, stream):
 	print("stream", hex(stream_int))
 	return io.BufferedReader(io.BytesIO(readed_stream))
 
-def peek_pair(stream) -> (int, int):
+def peek_pair(stream) -> Tuple[int, int]:
 	v = struct.unpack_from("<q", stream.peek(8))[0]
 	return ((v >> 32) & 0xFFFFFFFF, (v >> 0) & 0xFFFFFFFF)
 
-def read_pair(stream, b_objs, skip = False) -> (int, int):
+def read_pair(stream, b_objs) -> Tuple[int, int]:
 	read_bytes = stream.read(8)
 	b_objs["b" + str(len(b_objs))] = read_bytes
 	v = struct.unpack("<q", read_bytes)[0]
-	if skip:
-		return
-	else:
-		return ((v >> 32) & 0xFFFFFFFF, (v >> 0) & 0xFFFFFFFF)
+	return ((v >> 32) & 0xFFFFFFFF, (v >> 0) & 0xFFFFFFFF)
 
-def read_string(stream, info: int, b_objs) -> (bytes):
+def read_string(stream, info: int, b_objs) -> (str):
 	length = info & 0x7FFFFFFF
 	latin1 = bool(info & 0x80000000)
 
@@ -55,66 +55,48 @@ def read_string(stream, info: int, b_objs) -> (bytes):
 		b_objs["b" + str(len(b_objs))] = cut_bytes
 		return result.decode("utf-16le")
 
-def start_read(stream, objs, b_objs):
+def start_read(stream, b_objs) -> int | str | list:
 	tag, data = read_pair(stream, b_objs)
 
-	if tag == 0xFFFF0003:#
+	if tag == INT32:
 		if data > 0x7FFFFFFF:
 			data -= 0x80000000
-		return False, data
+		return data
 
-	elif tag == 0xFFFF0004:#
+	elif tag == STRING:
 		result = read_string(stream, data, b_objs) 
-		return False, result
+		return result
 
 	else:
 		obj = []
-		objs.append(obj)
-		return True, obj
+		return  obj
 
-def read_main(stream):
-	all_objs = []
+def read_main(stream) -> list:
 	b_objs = {}
-	objs = []
 
-	read_pair(stream, b_objs, skip=True)
-	add_obj, result = start_read(stream, objs, b_objs)
-	if add_obj:
-		all_objs.append(result)
+	read_pair(stream, b_objs)
 
-	while len(objs) > 0:
-		obj = objs[-1]
+	result = start_read(stream, b_objs)
+	if isinstance(result, list):
+		xlist = result
+		while True:
+			tag, _ = peek_pair(stream)
+			if tag == 0xFFFF0013:
+				read_pair(stream, b_objs)
+				return xlist
 
-		tag, _ = peek_pair(stream)
-		if tag == 0xFFFF0013:
-			read_pair(stream, b_objs, skip=True)
-			objs.pop()
-			pdb.set_trace()
-			continue
+			key = start_read(stream, b_objs)
+			val = start_read(stream, b_objs)
+			if not isinstance(key, int) or key < 0:
+				continue
 
-		add_obj, key = start_read(stream, objs, b_objs)
-		if add_obj:
-			all_objs.append(key)
+			if isinstance(val, str):
+				xlist.append(val)
 
-		add_obj, val = start_read(stream, objs, b_objs)
-		if add_obj:
-			all_objs.append(val)
-		else:
-			if isinstance(obj, list):#
-				if not isinstance(key, int) or key < 0:
-					continue
+			stream = check(b_objs, stream)
+	return []
 
-				while key >= len(obj):
-					obj.append(None)
-
-			obj[key] = val
-
-		stream = check(b_objs, stream)
-	all_objs.clear()
-
-	return result
-
-sqlite_path = "/home/asdf/.mozilla/firefox/21if9f71.default-release/storage/default/moz-extension+++1eab4c3c-cb03-4aed-9010-4a478ba9be01^userContextId=4294967295/idb/3647222921wleabcEoxlt-eengsairo.sqlite"
+sqlite_path = "./idb/3647222921wleabcEoxlt-eengsairo.sqlite"
 with sqlite3.connect(sqlite_path) as conn:
 	cur = conn.cursor()
 	cur.execute("SELECT key, data, file_ids FROM object_data WHERE ('' || key || '') LIKE '0tfmfdufeGjmufsMjtut';")
