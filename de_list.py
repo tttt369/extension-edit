@@ -1,9 +1,10 @@
 import io
 import pdb
-from typing import Tuple
+import json
+import struct
 import cramjam
 import sqlite3
-import struct
+from typing import Tuple
 
 INT32     = 0xFFFF0003
 STRING    = 0xFFFF0004
@@ -65,16 +66,18 @@ def start_read(stream, b_objs) -> int | str | list:
 
 	elif tag == STRING:
 		result = read_string(stream, data, b_objs) 
+		b_objs["string_format_type"] = data
 		return result
 
 	else:
 		obj = []
 		return  obj
 
-def read_main(stream) -> list:
+def read_main(stream) -> Tuple[list, dict]:
 	b_objs = {}
 
-	read_pair(stream, b_objs)
+	_, hf4 = read_pair(stream, b_objs)
+	b_objs["head_first_4bytes"] = hf4
 
 	result = start_read(stream, b_objs)
 	if isinstance(result, list):
@@ -83,7 +86,7 @@ def read_main(stream) -> list:
 			tag, _ = peek_pair(stream)
 			if tag == 0xFFFF0013:
 				read_pair(stream, b_objs)
-				return xlist
+				return xlist, b_objs
 
 			key = start_read(stream, b_objs)
 			val = start_read(stream, b_objs)
@@ -93,16 +96,37 @@ def read_main(stream) -> list:
 			if isinstance(val, str):
 				xlist.append(val)
 
-			stream = check(b_objs, stream)
-	return []
+			# stream = check(b_objs, stream)
+	return [], b_objs
 
+def decode_caesar_shift1(text) -> str:
+    result = ''
+    for c in text:
+        if 'a' <= c <= 'z':
+            result += chr((ord(c) - ord('a') - 1) % 26 + ord('a'))
+        elif 'A' <= c <= 'Z':
+            result += chr((ord(c) - ord('A') - 1) % 26 + ord('A'))
+        else:
+            result += c
+    return result.lstrip('0')  # ← 先頭の0を削除
+
+
+result_josn = {}
 sqlite_path = "./idb/3647222921wleabcEoxlt-eengsairo.sqlite"
 with sqlite3.connect(sqlite_path) as conn:
 	cur = conn.cursor()
 	cur.execute("SELECT key, data, file_ids FROM object_data WHERE ('' || key || '') LIKE '0tfmfdufeGjmufsMjtut';")
 	for row in cur:
+		ijson = {}
 		decompressed = cramjam.snappy.decompress_raw(row[1])
 		stream = (io.BufferedReader(io.BytesIO(decompressed)))
-		# print(stream.read())
-		result = read_main(stream)
-		print((result))
+
+		ijson["data"] , b_objs= read_main(stream)
+		ijson["head_first_4bytes"] = b_objs["head_first_4bytes"]
+		ijson["string_format_type"] = b_objs["string_format_type"]
+		decoded_key = decode_caesar_shift1(row[0].decode())
+		result_josn[decoded_key] = ijson
+with open("./test.json", "w") as f:
+	json.dump(result_josn, f, ensure_ascii=False, indent=4)
+print(result_josn)
+
