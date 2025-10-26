@@ -113,7 +113,7 @@ def read_main(stream):
 
 	all_objs = []
 	objs = []
-	pdb.set_trace()
+	# pdb.set_trace()
 	# read_header(stream) #8バイト飛ばす
 	c1 = read_pair(stream, skip=True) #8バイト飛ばす
 
@@ -153,13 +153,12 @@ def read_main(stream):
 
 	return result
 
-sqlite_path = "/home/asdf/.mozilla/firefox/dp8rcxsr.default-release/storage/default/moz-extension+++fa203d0f-14e3-46cd-b6b6-1550b9b088e6^userContextId=4294967295/idb/3647222921wleabcEoxlt-eengsairo.sqlite"
+sqlite_path = "/home/asdf/.floorp/vu2wkrkn.a/storage/default/moz-extension+++7c56243f-bd60-47f3-b659-d1c2ab598ad2^userContextId=4294967295/idb/3647222921wleabcEoxlt-eengsairo.sqlite"
 with sqlite3.connect(sqlite_path) as conn:
 	cur = conn.cursor()
-	cur.execute("SELECT key, data, file_ids FROM object_data WHERE ('' || key || '') LIKE '0tfmfdufeGjmufsMjtut';")
+	cur.execute("SELECT key, data, file_ids FROM object_data WHERE ('' || key || '') LIKE '0ijeefoTfuujoht';")
 	for row in cur:
 		decompressed = cramjam.snappy.decompress_raw(row[1])
 		stream = (io.BufferedReader(io.BytesIO(decompressed)))
-		print(stream.read())
 		result = read_main(stream)
 		print((result))

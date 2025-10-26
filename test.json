@@ -1,9 +1,19 @@
 {
+    "advancedUserEnabled": {
+        "header_type_int": 3
+    },
+    "importedLists": {
+        "header_type_int": 3
+    },
+    "popupPanelSections": {
+        "header_type_int": 3
+    },
     "selectedFilterLists": {
-        "data": [
-            "user-filters"
-        ],
-        "head_first_4bytes": 3,
-        "string_format_type": 2147483660
+        "header_type_int": 3,
+        "string_format_int": 2147483655
+    },
+    "hiddenSettings": {
+        "header_type_int": 3,
+        "string_format_int": 2147483671
     }
 }
