@@ -1,0 +1,27 @@
+"userSettings": {
+	"importedLists": [] -> importedLists
+}
+
+"whitelist": [
+	"chrome-extension-scheme",
+	"moz-extension-scheme"
+] -> netWhitelist
+
+"userFilters": "" -> user.filters
+
+
+
+
+"selectedFilterLists": [
+	"user-filters"
+], -> selectedFilterLists
+
+"hiddenSettings": {} -> hiddenSettings
+
+"dynamicFilteringString": "behind-the-scene * * noop\nbehind-the-scene * inline-script noop\nbehind-the-scene * 1p-script noop\nbehind-the-scene * 3p-script noop\nbehind-the-scene * 3p-frame noop\nbehind-the-scene * image noop\nbehind-the-scene * 3p noop" -> dynamicFilteringString
+
+"urlFilteringString": "" -> urlFilteringString
+
+"hostnameSwitchesString": "no-large-media: behind-the-scene false\nno-csp-reports: * true" -> hostnameSwitchesString
+
+userSettings, whitelist, userFilters, selectedFilterLists, hiddenSettings, dynamicFilteringString, urlFilteringString, hostnameSwitchesString
