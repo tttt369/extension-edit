@@ -4,16 +4,14 @@ import json
 import snappy
 import struct
 import sqlite3
-import mozencode
 from typing import Tuple
 
 INT32                 = 0xFFFF0003
 STRING                = 0xFFFF0004
-BOOLEAN               = 0xFFFF0002
 ARRAY_OBJECT          = 0xFFFF0007
 OBJECT_OBJECT         = 0xFFFF0008
 
-def check(stream, b_objs) -> io.BufferedReader:
+def check(b_objs, stream) -> io.BufferedReader:
 	readed_stream = stream.read()
 	for key, value in b_objs.items():
 		key_int = int.from_bytes(value, "little")
@@ -81,13 +79,10 @@ def start_read(stream, b_objs, meta_objs) -> int | str | list | dict:
 		xdict = {}
 		return xdict
 
-	elif tag == BOOLEAN:
-		return bool(data)
-
 	else:
 		raise ValueError()
 
-def read_main(stream, metad_objs) -> list | dict | str | bool | int:
+def read_main(stream, metad_objs) -> list | dict | str:
 	b_objs = {}
 
 	_, hf4 = read_pair(stream, b_objs)
@@ -116,36 +111,35 @@ def read_main(stream, metad_objs) -> list | dict | str | bool | int:
 			tag, _ = peek_pair(stream)
 			if tag == 0xFFFF0013:
 				read_pair(stream, b_objs)
+				stream = check(b_objs, stream)
 				return xdict
 
 			key = start_read(stream, b_objs, metad_objs)
 			val = start_read(stream, b_objs, metad_objs)
-			xdict[key] = val
+			if not isinstance(key, int) or key < 0:
+				continue
+
+			if isinstance(val, str):
+				xdict[key] = val
+
+			return {}
 	elif isinstance(result, str):
-			# check(stream, b_objs)
-			return result
-
-	elif isinstance(result, bool):
-			# check(stream, b_objs)
-			return result
-
-	elif isinstance(result, int):
-			# check(stream, b_objs)
-			return result
+			return repr(result)
 	else:
-		print("result", result)
+		print(result)
 		raise ValueError()
 
-
-def decode_caesar_shift1(text) -> str:
-	result = ''
-	for c in text:
-		if 'a' <= c <= 'z':
-			result += chr((ord(c) - ord('a') - 1) % 26 + ord('a'))
-		elif 'A' <= c <= 'Z':
-			result += chr((ord(c) - ord('A') - 1) % 26 + ord('A'))
-		else:
-			result += c
-	return result.lstrip('0')
-
-
+sqlite_path = "/home/asdf/.floorp/vu2wkrkn.a/storage/default/moz-extension+++7c56243f-bd60-47f3-b659-d1c2ab598ad2^userContextId=4294967295/idb/3647222921wleabcEoxlt-eengsairo.sqlite"
+with sqlite3.connect(sqlite_path) as conn:
+	cur = conn.cursor()
+	cur.execute("SELECT key, data, file_ids FROM object_data WHERE ('' || key || '') LIKE '0ijeefoTfuujoht';")
+	for row in cur:
+		meta_objs = {}
+		pdb.set_trace()
+		decompressed = snappy.decompress(row[1])
+		if isinstance(decompressed, str):
+			decompressed = decompressed.encode()
+		stream = (io.BufferedReader(io.BytesIO(decompressed)))
+		result = read_main(stream, meta_objs)
+		print((result))
+		print(decompressed)

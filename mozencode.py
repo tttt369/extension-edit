@@ -10,8 +10,7 @@ def encode_caesar_shift1(text) -> str:
             result += c
     return result
 
-def encode_main(target, data_objs) -> bytes:
-	data_type = type(target)
+def encode_main(target, data_objs={}) -> bytes:
 	try:
 		htint = data_objs["header_type_int"]
 	except:
