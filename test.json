@@ -15,5 +15,25 @@
     "hiddenSettings": {
         "header_type_int": 3,
         "string_format_int": 2147483671
+    },
+    "netWhitelist": {
+        "header_type_int": 3,
+        "string_format_int": 2147483668
+    },
+    "dynamicFilteringString": {
+        "header_type_int": 3,
+        "string_format_int": 2147483869
+    },
+    "urlFilteringString": {
+        "header_type_int": 3,
+        "string_format_int": 2147483648
+    },
+    "hostnameSwitchesString": {
+        "header_type_int": 3,
+        "string_format_int": 2147483709
+    },
+    "user.filters": {
+        "header_type_int": 3,
+        "string_format_int": 2147483648
     }
 }

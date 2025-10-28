@@ -176,8 +176,8 @@ backup_file = "/home/asdf/Downloads/my-ublock-backup_2025-10-27_14.47.28.txt"
 test_json = {}
 
 valid_list, original_data= read_ublock_backup(backup_file)
+print(valid_list)
 added_list = []
-file_ids = 1
 for key in valid_list:
 	# if not key == "popupPanelSections":
 	# 	continue
@@ -185,20 +185,8 @@ for key in valid_list:
 
 	with sqlite3.connect(sqlite_path) as conn:
 		cur = conn.cursor()
-		cur.execute("SELECT key FROM object_data WHERE key = ?", (enc_key,))
-		row = cur.fetchone()
-		if row:
-			# 必要なら更新
-			cur.execute("UPDATE object_data SET data = ?, file_ids = ? WHERE key = ?", (data, file_ids, enc_key))
-		else:
-			# 挿入
-			cur.execute("INSERT INTO object_data (key, data, file_ids) VALUES (?, ?, ?)", (enc_key, data, file_ids))
-		conn.commit()
-
 		cur.execute(f"SELECT key, data, file_ids FROM object_data WHERE ('' || key || '') LIKE '{enc_key}';")
 		for row in cur:
-			file_ids = row[2]
-			print(file_ids)
 			added_list.append(key)
 			meta_objs = {}
 			decompressed = snappy.decompress(row[1])

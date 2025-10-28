@@ -23,3 +23,20 @@ c3 0x0
 c4 0xffff000300000001
 c5 0x737265746c69662d6b636f6c6275ffff00048000000e
 stream 0xffff001300000000
+
+
+warning: header_type_int is missing fall back to default value
+warning: string_format_int is missing fall back to default value
+b'\x03\x00\x00\x00\x00\x00\xf1\xff\xdd\x00\x00\x80\x04\x00\xff\xffbehind-the-scene * * noop\nbehind-the-scene * inline-script noop\
+nbehind-the-scene * 1p-script noop\nbehind-the-scene * 3p-script noop\nbehind-the-scene * 3p-frame noop\nbehind-the-scene * image n
+oop\nbehind-the-scene * 3p noop\x00\x00\x00'
+warning: header_type_int is missing fall back to default value
+warning: string_format_int is missing fall back to default value
+b'\x03\x00\x00\x00\x00\x00\xf1\xff\x00\x00\x00\x80\x04\x00\xff\xff'
+warning: header_type_int is missing fall back to default value
+warning: string_format_int is missing fall back to default value
+b'\x03\x00\x00\x00\x00\x00\xf1\xff=\x00\x00\x80\x04\x00\xff\xffno-large-media: behind-the-scene false\nno-csp-reports: * true\x00\x
+00\x00'
+warning: header_type_int is missing fall back to default value
+warning: string_format_int is missing fall back to default value
+b'\x03\x00\x00\x00\x00\x00\xf1\xff\x00\x00\x00\x80\x04\x00\xff\xff'
