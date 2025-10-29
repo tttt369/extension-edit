@@ -1,2 +1,4 @@
 .venv/*
 idb/*
+test.json
+__pycache__/*
