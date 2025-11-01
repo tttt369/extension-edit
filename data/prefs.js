@@ -294,3 +294,4 @@ user_pref("toolkit.startup.last_success", 1761878604);
 user_pref("toolkit.telemetry.cachedClientID", "c0ffeec0-ffee-c0ff-eec0-ffeec0ffeec0");
 user_pref("toolkit.telemetry.cachedProfileGroupID", "decafdec-afde-cafd-ecaf-decafdecafde");
 user_pref("toolkit.telemetry.previousBuildID", "20251019122804");
+user_pref("extensions.autoDisableScopes", 0);
